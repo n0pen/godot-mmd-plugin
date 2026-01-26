@@ -1,66 +1,37 @@
-/**************************************************************************/
-/*  editor_scene_importer_mmd_pmx.cpp                                     */
-/**************************************************************************/
-/*                         This file is part of:                          */
-/*                             GODOT ENGINE                               */
-/*                        https://godotengine.org                         */
-/**************************************************************************/
-/* Copyright (c) 2014-present Godot Engine contributors (see AUTHORS.md). */
-/* Copyright (c) 2007-2014 Juan Linietsky, Ariel Manzur.                  */
-/*                                                                        */
-/* Permission is hereby granted, free of charge, to any person obtaining  */
-/* a copy of this software and associated documentation files (the        */
-/* "Software"), to deal in the Software without restriction, including    */
-/* without limitation the rights to use, copy, modify, merge, publish,    */
-/* distribute, sublicense, and/or sell copies of the Software, and to     */
-/* permit persons to whom the Software is furnished to do so, subject to  */
-/* the following conditions:                                              */
-/*                                                                        */
-/* The above copyright notice and this permission notice shall be         */
-/* included in all copies or substantial portions of the Software.        */
-/*                                                                        */
-/* THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,        */
-/* EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF     */
-/* MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. */
-/* IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY   */
-/* CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,   */
-/* TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE      */
-/* SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.                 */
-/**************************************************************************/
-
 #include "editor_scene_importer_mmd_pmx.h"
+#include <godot_cpp/classes/project_settings.hpp>
 
-#include "core/config/project_settings.h"
-#include "core/core_bind.h"
-#include "core/io/dir_access.h"
-#include "core/string/print_string.h"
-#include "core/templates/hash_map.h"
-#include "core/templates/local_vector.h"
-#include "core/templates/pair.h"
-#include "scene/3d/importer_mesh_instance_3d.h"
-#include "scene/3d/mesh_instance_3d.h"
-#include "scene/3d/node_3d.h"
-#include "scene/3d/physics/physics_body_3d.h"
-#include "scene/3d/physics/static_body_3d.h"
-#include "scene/3d/skeleton_3d.h"
-#include "scene/animation/animation_player.h"
-#include "scene/resources/3d/importer_mesh.h"
-#include "scene/resources/surface_tool.h"
+#include <godot_cpp/classes/animation_player.hpp>
+#include <godot_cpp/classes/dir_access.hpp>
+#include <godot_cpp/classes/importer_mesh.hpp>
+#include <godot_cpp/classes/importer_mesh_instance3d.hpp>
+#include <godot_cpp/classes/resource_loader.hpp>
+#include <godot_cpp/classes/skeleton3d.hpp>
+#include <godot_cpp/classes/skin.hpp>
+#include <godot_cpp/classes/skin_reference.hpp>
+#include <godot_cpp/classes/standard_material3d.hpp>
+#include <godot_cpp/classes/static_body3d.hpp>
+#include <godot_cpp/classes/texture2d.hpp>
 
-#include <cstdint>
 #include <fstream>
-#include <string>
 
 #include "thirdparty/ksy/mmd_pmx.h"
 
-void EditorSceneImporterMMDPMX::get_extensions(List<String> *r_extensions) const {
-	r_extensions->push_back("pmx");
+namespace godot {
+PackedStringArray EditorSceneImporterMMDPMX::_get_extensions() const {
+	auto extensions = PackedStringArray();
+	extensions.push_back("pmx");
+	return extensions;
 }
 
-Node *EditorSceneImporterMMDPMX::import_scene(const String &p_path, uint32_t p_flags, const HashMap<StringName, Variant> &p_options, List<String> *r_missing_deps, Error *r_err) {
+Node *EditorSceneImporterMMDPMX::_import_scene(const String &p_path, uint32_t p_flags, const Dictionary &p_options) {
 	Ref<PMXMMDState> state;
 	state.instantiate();
-	return import_mmd_pmx_scene(p_path, p_flags, (float)p_options["animation/fps"], state);
+	return import_mmd_pmx_scene(p_path, p_flags, static_cast<float>(p_options["animation/fps"]), state);
+}
+
+void EditorSceneImporterMMDPMX::_bind_methods() {
+	ClassDB::bind_method(D_METHOD("get_extensions"), &EditorSceneImporterMMDPMX::_get_extensions);
 }
 
 bool EditorSceneImporterMMDPMX::is_valid_index(mmd_pmx_t::sized_index_t *p_index) const {
@@ -85,7 +56,10 @@ Vector3 EditorSceneImporterMMDPMX::pmx_vec3_to_vector3d(const mmd_pmx_t::vec3_t 
 	};
 }
 
-void EditorSceneImporterMMDPMX::add_vertex(Ref<SurfaceTool> p_surface, mmd_pmx_t::vertex_t *r_vertex, BoneId p_unused_bone) const {
+void EditorSceneImporterMMDPMX::add_vertex(
+		const Ref<SurfaceTool> &p_surface,
+		mmd_pmx_t::vertex_t *r_vertex,
+		int32_t p_unused_bone) const {
 	ERR_FAIL_COND(p_surface.is_null());
 	ERR_FAIL_NULL(r_vertex);
 	ERR_FAIL_NULL(r_vertex->normal());
@@ -114,30 +88,30 @@ void EditorSceneImporterMMDPMX::add_vertex(Ref<SurfaceTool> p_surface, mmd_pmx_t
 		mmd_pmx_t::bone_type_t bone_type = r_vertex->type();
 		switch (bone_type) {
 			case mmd_pmx_t::BONE_TYPE_BDEF1: {
-				mmd_pmx_t::bdef1_weights_t *pmx_weights = (mmd_pmx_t::bdef1_weights_t *)r_vertex->skin_weights();
+				auto *pmx_weights = (mmd_pmx_t::bdef1_weights_t *)r_vertex->skin_weights();
 				ERR_FAIL_NULL(pmx_weights);
 				if (is_valid_index(pmx_weights->bone_index())) {
-					bones.write[0] = pmx_weights->bone_index()->value();
-					weights.write[0] = 1.0f;
+					bones[0] = pmx_weights->bone_index()->value();
+					weights[0] = 1.0f;
 				}
 			} break;
 			case mmd_pmx_t::BONE_TYPE_BDEF2: {
-				mmd_pmx_t::bdef2_weights_t *pmx_weights = (mmd_pmx_t::bdef2_weights_t *)r_vertex->skin_weights();
+				auto *pmx_weights = (mmd_pmx_t::bdef2_weights_t *)r_vertex->skin_weights();
 				ERR_FAIL_NULL(pmx_weights);
 				for (uint32_t count = 0; count < 2; count++) {
 					if (is_valid_index(pmx_weights->bone_indices()->at(count).get())) {
-						bones.write[count] = pmx_weights->bone_indices()->at(count)->value();
-						weights.write[count] = pmx_weights->weights()->at(count);
+						bones[count] = pmx_weights->bone_indices()->at(count)->value();
+						weights[count] = pmx_weights->weights()->at(count);
 					}
 				}
 			} break;
 			case mmd_pmx_t::BONE_TYPE_BDEF4: {
-				mmd_pmx_t::bdef4_weights_t *pmx_weights = (mmd_pmx_t::bdef4_weights_t *)r_vertex->skin_weights();
+				auto *pmx_weights = (mmd_pmx_t::bdef4_weights_t *)r_vertex->skin_weights();
 				ERR_FAIL_NULL(pmx_weights);
 				for (uint32_t count = 0; count < 4; count++) {
 					if (is_valid_index(pmx_weights->bone_indices()->at(count).get())) {
-						bones.write[count] = pmx_weights->bone_indices()->at(count)->value();
-						weights.write[count] = pmx_weights->weights()->at(count);
+						bones[count] = pmx_weights->bone_indices()->at(count)->value();
+						weights[count] = pmx_weights->weights()->at(count);
 					}
 				}
 			} break;
@@ -146,8 +120,8 @@ void EditorSceneImporterMMDPMX::add_vertex(Ref<SurfaceTool> p_surface, mmd_pmx_t
 				mmd_pmx_t::sdef_weights_t *pmx_weights = static_cast<mmd_pmx_t::sdef_weights_t *>(r_vertex->skin_weights());
 				for (uint32_t count = 0; count < 2; count++) {
 					if (is_valid_index(pmx_weights->bone_indices()->at(count).get())) {
-						bones.write[count] = pmx_weights->bone_indices()->at(count)->value();
-						weights.write[count] = pmx_weights->weights()->at(count);
+						bones[count] = pmx_weights->bone_indices()->at(count)->value();
+						weights[count] = pmx_weights->weights()->at(count);
 					}
 				}
 			} break;
@@ -166,7 +140,7 @@ void EditorSceneImporterMMDPMX::add_vertex(Ref<SurfaceTool> p_surface, mmd_pmx_t
 		real_t renorm = weights[0] + weights[1] + weights[2] + weights[3];
 		if (renorm > CMP_EPSILON && abs(renorm - 1.0) > CMP_EPSILON) {
 			for (int i = 0; i < 4; ++i) {
-				weights.write[i] /= renorm;
+				weights[i] /= renorm;
 			}
 		}
 		p_surface->set_weights(weights);
@@ -174,27 +148,25 @@ void EditorSceneImporterMMDPMX::add_vertex(Ref<SurfaceTool> p_surface, mmd_pmx_t
 	p_surface->add_vertex(point);
 }
 
-String EditorSceneImporterMMDPMX::convert_string(const std::string &p_string, uint8_t p_encoding) const {
-	String output;
-	if (!p_encoding && !p_string.empty()) {
-		Vector<char16_t> buf;
+String EditorSceneImporterMMDPMX::convert_string(const std::string &p_string, uint8_t p_encoding) {
+	if (!p_string.empty()) {
+		auto d_string = PackedByteArray();
 		size_t str_len = p_string.size();
-		buf.resize(str_len / 2);
+		d_string.resize(str_len);
 		const char *str_data = p_string.c_str();
 		if (str_data != nullptr) {
-			memcpy(buf.ptrw(), str_data, str_len / 2 * sizeof(char16_t));
-			output.append_utf16(buf.ptr(), buf.size());
+			memcpy(d_string.ptrw(), str_data, str_len / 2 * sizeof(char16_t));
 		}
-	} else if (!p_string.empty()) {
-		const char *str_data = p_string.data();
-		if (str_data != nullptr) {
-			output.append_utf8(str_data, p_string.size());
+		if (!p_encoding) {
+			return d_string.get_string_from_utf16();
 		}
+		return d_string.get_string_from_utf8();
 	}
-	return output;
+	return "";
 }
 
-Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint32_t p_flags, float p_bake_fps, Ref<PMXMMDState> r_state) {
+Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint32_t p_flags, float p_bake_fps,
+		Ref<PMXMMDState> r_state) {
 	if (r_state.is_null()) {
 		r_state.instantiate();
 	}
@@ -210,7 +182,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 	for (uint32_t bone_i = 0; bone_i < bone_count; bone_i++) {
 		String japanese_name = convert_string(
 				bones->at(bone_i)->name()->value(), pmx.header()->encoding());
-		BoneId bone = skeleton->get_bone_count();
+		int32_t bone = skeleton->get_bone_count();
 		skeleton->add_bone(japanese_name);
 		if (!bones->at(bone_i)->enabled()) {
 			skeleton->set_bone_enabled(bone, false);
@@ -224,7 +196,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		real_t z = bones->at(bone_i)->position()->z() * mmd_unit_conversion;
 		xform.origin = Vector3(x, y, z);
 
-		BoneId parent_index = -1;
+		int32_t parent_index = -1;
 		if (is_valid_index(bones->at(bone_i)->parent_index())) {
 			parent_index = bones->at(bone_i)->parent_index()->value();
 			if (parent_index >= 0 && parent_index < int64_t(bone_count)) {
@@ -241,7 +213,6 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 			skeleton->set_bone_parent(bone_i, parent_index);
 		}
 	}
-	translate_bones(skeleton);
 
 	// Create a root bone at origin to serve as the skeleton root
 	skeleton->add_bone("Root");
@@ -275,7 +246,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 	}
 	String unused_bone_name = "UnusedBone";
 	skeleton->add_bone(unused_bone_name);
-	BoneId unused_bone_index = skeleton->find_bone(unused_bone_name);
+	int32_t unused_bone_index = skeleton->find_bone(unused_bone_name);
 	skeleton->set_bone_parent(unused_bone_index, root_bone_id);
 	root->add_child(skeleton, true);
 	skeleton->set_owner(root);
@@ -283,7 +254,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 	std::vector<std::unique_ptr<mmd_pmx_t::material_t>> *materials = pmx.materials();
 	Vector<Ref<Texture2D>> texture_cache;
 	texture_cache.resize(pmx.texture_count());
-
+	auto r_loader = ResourceLoader::get_singleton();
 	for (uint32_t texture_cache_i = 0; texture_cache_i < pmx.texture_count(); texture_cache_i++) {
 		std::string raw_texture_path = pmx.textures()->at(texture_cache_i)->name()->value();
 		if (raw_texture_path.empty()) {
@@ -294,9 +265,10 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		print_verbose(vformat("Found texture %s", texture_path));
 
 		Ref<Texture2D> base_color_tex;
-		String found_file = find_file_case_insensitive_recursive(texture_path.get_file(), texture_path.get_base_dir());
+		String found_file = find_file_case_insensitive_recursive(texture_path.get_file(),
+				texture_path.get_base_dir());
 		if (!found_file.is_empty()) {
-			base_color_tex = ResourceLoader::load(found_file, "Texture2D");
+			base_color_tex = r_loader->load(found_file, "Texture2D");
 		}
 
 		ERR_CONTINUE_MSG(base_color_tex.is_null(), vformat("Can't load texture: %s", texture_path));
@@ -315,7 +287,8 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		}
 		mmd_pmx_t::color4_t *diffuse = materials->at(material_cache_i)->diffuse();
 		material->set_albedo(Color(diffuse->r(), diffuse->g(), diffuse->b(), diffuse->a()));
-		String material_name = convert_string(materials->at(material_cache_i)->name()->value(), pmx.header()->encoding());
+		String material_name = convert_string(materials->at(material_cache_i)->name()->value(),
+				pmx.header()->encoding());
 		material->set_name(material_name);
 		material_cache.write[material_cache_i] = material;
 	}
@@ -329,7 +302,8 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 
 		LocalVector<String> blend_shapes;
 		for (uint32_t morph_i = 0; morph_i < pmx.morph_count(); ++morph_i) {
-			String name = convert_string(pmx.morphs()->at(morph_i)->english_name()->value(), pmx.header()->encoding());
+			String name = convert_string(pmx.morphs()->at(morph_i)->english_name()->value(),
+					pmx.header()->encoding());
 			blend_shapes.push_back(name);
 			if (pmx.morphs()->at(morph_i)->type() == mmd_pmx_t::MORPH_TYPE_VERTEX) {
 				mesh->add_blend_shape(name);
@@ -448,11 +422,11 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 	return root;
 }
 
-String EditorSceneImporterMMDPMX::find_file_case_insensitive_recursive(const String &p_target, const String &p_path) {
+String EditorSceneImporterMMDPMX::find_file_case_insensitive_recursive(
+		const String &p_target, const String &p_path) {
 	String new_path = p_path.simplify_path();
-	Ref<DirAccess> dir = DirAccess::create(DirAccess::ACCESS_RESOURCES);
-	Error err = dir->change_dir(new_path);
-	if (err != OK) {
+	auto dir = DirAccess::open(new_path);
+	if (dir.is_null()) {
 		print_error("Failed to open directory: " + new_path);
 		return String();
 	}
@@ -635,3 +609,4 @@ void EditorSceneImporterMMDPMX::set_bone_rest_and_parent(Skeleton3D *p_skeleton,
 		p_skeleton->set_bone_parent(p_bone_id, p_parent_id);
 	}
 }
+} //namespace godot
