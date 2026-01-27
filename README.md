@@ -2,7 +2,7 @@
 
 ## What is this?
 
-A Godot 4.6 Plugin under development for importing Miku Miku Dance Files into Godot. Based on [Godot PMX importer](https://github.com/seanlynch/godot_pmx_importer) module
+A Godot 4.6 Plugin for importing Miku Miku Dance Files into Godot. Based on [Godot PMX importer](https://github.com/seanlynch/godot_pmx_importer) module
 
 The objective is to import MMD files to be able to render and work with MMD assets inside godot
 
@@ -10,13 +10,13 @@ The objective is to import MMD files to be able to render and work with MMD asse
 - [x] Skeleton
 - [x] Mesh
 - [ ] Morphs
-  - Only vertex morphs are imported at the moment
+  - Only vertex morphs are imported
 - [x] Materials
   - Only basic textured materials are created
 - [ ] IK
-  - This is Under development.
+  - This is under development.
 - [ ] Bone Parent
-  - This is Under development.
+  - This is under development.
 - [ ] Physics
   - For now, use bone modifiers. See below
 
@@ -26,7 +26,9 @@ The objective is to import MMD files to be able to render and work with MMD asse
 
 ## How do I use it?
 
-Build, then copy the Plugin `addons` folder into your godot `addons` folder, then import your MMD files
+Build, then copy the Plugin `addons` folder into your godot `addons` folder,
+Activate the plugin in project settings,
+then import your MMD files
 
 ## Physics
 
