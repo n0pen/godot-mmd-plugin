@@ -1,8 +1,8 @@
 # MMD asset importer Plugin for Godot
 
-## What is it?
+## What is this?
 
-A Godot 4 Plugin under development for importing Miku Miku Dance Files into Godot.
+A Godot 4.6 Plugin under development for importing Miku Miku Dance Files into Godot. Based on [Godot PMX importer](https://github.com/seanlynch/godot_pmx_importer) module
 
 The objective is to import MMD files to be able to render and work with MMD assets inside godot
 
@@ -12,7 +12,7 @@ The objective is to import MMD files to be able to render and work with MMD asse
 - [ ] Morphs
   - Only vertex morphs are imported at the moment
 - [x] Materials
-  - For the moment, only basic textured materials are created
+  - Only basic textured materials are created
 - [ ] IK
   - This is Under development.
 - [ ] Bone Parent
