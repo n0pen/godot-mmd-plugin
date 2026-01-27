@@ -276,7 +276,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 
 		LocalVector<String> blend_shapes;
 		for (uint32_t morph_i = 0; morph_i < pmx.morph_count(); ++morph_i) {
-			String name = convert_string(pmx.morphs()->at(morph_i)->english_name()->value(),
+			String name = convert_string(pmx.morphs()->at(morph_i)->name()->value(),
 					pmx.header()->encoding());
 			blend_shapes.push_back(name);
 			if (pmx.morphs()->at(morph_i)->type() == mmd_pmx_t::MORPH_TYPE_VERTEX) {
