@@ -1,4 +1,7 @@
 #include "editor_scene_importer_mmd_pmx.h"
+
+#include "mmd_helpers.h"
+
 #include <godot_cpp/classes/project_settings.hpp>
 
 #include <godot_cpp/classes/animation_player.hpp>
@@ -141,23 +144,6 @@ void EditorSceneImporterMMDPMX::add_vertex(
 	p_surface->add_vertex(point);
 }
 
-String EditorSceneImporterMMDPMX::convert_string(const std::string &p_string, uint8_t p_encoding) {
-	if (!p_string.empty()) {
-		auto d_string = PackedByteArray();
-		size_t str_len = p_string.size();
-		d_string.resize(str_len);
-		const char *str_data = p_string.c_str();
-		if (str_data != nullptr) {
-			memcpy(d_string.ptrw(), str_data, str_len / sizeof(char));
-		}
-		if (!p_encoding) {
-			return d_string.get_string_from_utf16();
-		}
-		return d_string.get_string_from_utf8();
-	}
-	return "";
-}
-
 Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint32_t p_flags, float p_bake_fps,
 		Ref<PMXMMDState> r_state) {
 	if (r_state.is_null()) {
@@ -173,7 +159,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 	Skeleton3D *skeleton = memnew(Skeleton3D);
 	uint32_t bone_count = pmx.bone_count();
 	for (uint32_t bone_i = 0; bone_i < bone_count; bone_i++) {
-		String japanese_name = convert_string(
+		String japanese_name = mmd_helpers::convert_string(
 				bones->at(bone_i)->name()->value(), pmx.header()->encoding());
 		int32_t bone = skeleton->get_bone_count();
 		skeleton->add_bone(japanese_name);
@@ -227,7 +213,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		if (raw_texture_path.empty()) {
 			continue;
 		}
-		String texture_path = convert_string(raw_texture_path, pmx.header()->encoding()).simplify_path();
+		String texture_path = mmd_helpers::convert_string(raw_texture_path, pmx.header()->encoding()).simplify_path();
 		texture_path = p_path.get_base_dir() + "/" + texture_path;
 		print_verbose(vformat("Found texture %s", texture_path));
 
@@ -254,7 +240,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		}
 		mmd_pmx_t::color4_t *diffuse = materials->at(material_cache_i)->diffuse();
 		material->set_albedo(Color(diffuse->r(), diffuse->g(), diffuse->b(), diffuse->a()));
-		String material_name = convert_string(materials->at(material_cache_i)->name()->value(),
+		String material_name = mmd_helpers::convert_string(materials->at(material_cache_i)->name()->value(),
 				pmx.header()->encoding());
 		material->set_name(material_name);
 		material_cache.write[material_cache_i] = material;
@@ -269,7 +255,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 
 		LocalVector<String> blend_shapes;
 		for (uint32_t morph_i = 0; morph_i < pmx.morph_count(); ++morph_i) {
-			String name = convert_string(pmx.morphs()->at(morph_i)->name()->value(),
+			String name = mmd_helpers::convert_string(pmx.morphs()->at(morph_i)->name()->value(),
 					pmx.header()->encoding());
 			blend_shapes.push_back(name);
 			if (pmx.morphs()->at(morph_i)->type() == mmd_pmx_t::MORPH_TYPE_VERTEX) {
@@ -369,7 +355,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 	std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t>> *rigid_bodies = pmx.rigid_bodies();
 	for (uint32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
 		StaticBody3D *static_body_3d = memnew(StaticBody3D);
-		String rigid_name = convert_string(rigid_bodies->at(rigid_bodies_i)->name()->value(), pmx.header()->encoding());
+		String rigid_name = mmd_helpers::convert_string(rigid_bodies->at(rigid_bodies_i)->name()->value(), pmx.header()->encoding());
 		Transform3D xform;
 		Basis basis;
 		basis.set_euler(Vector3(
