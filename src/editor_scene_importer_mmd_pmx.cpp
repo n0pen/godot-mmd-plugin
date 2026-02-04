@@ -30,10 +30,6 @@ Node *EditorSceneImporterMMDPMX::_import_scene(const String &p_path, uint32_t p_
 	return import_mmd_pmx_scene(p_path, p_flags, static_cast<float>(p_options["animation/fps"]), state);
 }
 
-void EditorSceneImporterMMDPMX::_bind_methods() {
-	ClassDB::bind_method(D_METHOD("get_extensions"), &EditorSceneImporterMMDPMX::_get_extensions);
-}
-
 bool EditorSceneImporterMMDPMX::is_valid_index(mmd_pmx_t::sized_index_t *p_index) const {
 	ERR_FAIL_NULL_V(p_index, false);
 	int64_t bone_index = p_index->value();
@@ -63,11 +59,8 @@ void EditorSceneImporterMMDPMX::add_vertex(
 	ERR_FAIL_COND(p_surface.is_null());
 	ERR_FAIL_NULL(r_vertex);
 	ERR_FAIL_NULL(r_vertex->normal());
-	Vector3 normal = Vector3(r_vertex->normal()->x(),
-			r_vertex->normal()->y(),
-			r_vertex->normal()->z());
+	Vector3 normal = pmx_vec3_to_vector3d(r_vertex->normal());
 	p_surface->set_normal(normal);
-	normal.z = -normal.z;
 	ERR_FAIL_NULL(r_vertex->uv());
 	Vector2 uv = Vector2(r_vertex->uv()->x(),
 			r_vertex->uv()->y());

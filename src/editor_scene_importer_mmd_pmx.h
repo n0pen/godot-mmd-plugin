@@ -30,7 +30,7 @@ public:
 	Node *_import_scene(const String &p_path, uint32_t p_flags, const Dictionary &p_options) override;
 
 protected:
-	static void _bind_methods();
+	static void _bind_methods(){};
 };
 
 class PMXMMDState : public Resource {
