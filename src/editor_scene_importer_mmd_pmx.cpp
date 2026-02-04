@@ -148,7 +148,7 @@ String EditorSceneImporterMMDPMX::convert_string(const std::string &p_string, ui
 		d_string.resize(str_len);
 		const char *str_data = p_string.c_str();
 		if (str_data != nullptr) {
-			memcpy(d_string.ptrw(), str_data, str_len / 2 * sizeof(char16_t));
+			memcpy(d_string.ptrw(), str_data, str_len / sizeof(char));
 		}
 		if (!p_encoding) {
 			return d_string.get_string_from_utf16();
