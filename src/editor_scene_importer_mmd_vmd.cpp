@@ -33,8 +33,6 @@ Node *EditorSceneImporterMMDVMD::_import_scene(const String &p_path, uint32_t p_
 	NodePath option = p_options["Skeleton"];
 	const auto *editor = EditorInterface::get_singleton();
 	const auto *edited_node = editor->get_edited_scene_root();
-	print_line(option);
-	print_line(edited_node->get_path());
 	auto *node = edited_node->get_node<Skeleton3D>(option);
 
 	if (!node) {
@@ -111,7 +109,7 @@ Node *EditorSceneImporterMMDVMD::import_mmd_vmd_scene(const String &p_path, Skel
 	if (skeleton) {
 		auto children = skeleton->get_children();
 		MeshInstance3D *mesh;
-		for (const auto & child : children) {
+		for (const auto &child : children) {
 			if ((mesh = cast_to<MeshInstance3D>(child))) {
 				break;
 			}
@@ -120,7 +118,7 @@ Node *EditorSceneImporterMMDVMD::import_mmd_vmd_scene(const String &p_path, Skel
 			for (uint32_t vmd_bs_idx = 0; vmd_bs_idx < vmd.morph_count(); ++vmd_bs_idx) {
 				auto morph = vmd.morphs()->at(vmd_bs_idx).get();
 				auto morph_name = mmd_helpers::convert_string(sj2utf8(morph->morph_name()), 1);
-				if (mesh->find_blend_shape_by_name(morph_name)<0) {
+				if (mesh->find_blend_shape_by_name(morph_name) < 0) {
 					continue;
 				}
 				max_frame = MAX(max_frame, morph->frame_number());
@@ -147,28 +145,27 @@ Node *EditorSceneImporterMMDVMD::import_mmd_vmd_scene(const String &p_path, Skel
 			auto bone = skeleton->find_bone(bone_name);
 			if (bone < 0)
 				continue;
-			int32_t rotation_track_x, rotation_track_y, rotation_track_z, rotation_track_w;
+			int32_t rotation_track_v, rotation_track_b;
 
 			int32_t translation_track;
 			Transform3D bone_transform = skeleton->get_bone_rest(bone);
+			auto rot_path1 = vformat(".:bones/%d/bone_meta/mmd_rot_1", bone);
+			auto rot_bezier_path = vformat(".:bones/%d/bone_meta/mmd_rot_bezier", bone);
+
 			if (motion_tracks.find(bone_name) < 0) {
-				rotation_track_x = animation->add_track(Animation::TYPE_BEZIER);
-				rotation_track_y = animation->add_track(Animation::TYPE_BEZIER);
-				rotation_track_z = animation->add_track(Animation::TYPE_BEZIER);
-				rotation_track_w = animation->add_track(Animation::TYPE_BEZIER);
+				rotation_track_v = animation->add_track(Animation::TYPE_VALUE);
+				animation->track_set_path(rotation_track_v, NodePath(rot_path1));
+				animation->value_track_set_update_mode(rotation_track_v, Animation::UpdateMode::UPDATE_DISCRETE);
+
+				rotation_track_b = animation->add_track(Animation::TYPE_BEZIER);
+				animation->track_set_path(rotation_track_b, NodePath(rot_bezier_path));
+
 				translation_track = animation->add_track(Animation::TYPE_POSITION_3D);
-				animation->track_set_path(rotation_track_x, NodePath(vformat(".:bones/%d/bone_meta/mmd_rot:x", bone)));
-				animation->track_set_path(rotation_track_y, NodePath(vformat(".:bones/%d/bone_meta/mmd_rot:y", bone)));
-				animation->track_set_path(rotation_track_z, NodePath(vformat(".:bones/%d/bone_meta/mmd_rot:z", bone)));
-				animation->track_set_path(rotation_track_w, NodePath(vformat(".:bones/%d/bone_meta/mmd_rot:w", bone)));
 				animation->track_set_path(translation_track, NodePath(".:" + bone_name));
 				motion_tracks.append(bone_name);
-				motion_tracks.append(bone_name);
 			} else {
-				rotation_track_x = animation->find_track(NodePath(vformat(".:bones/%d/bone_meta/mmd_rot:x", bone)), Animation::TYPE_BEZIER);
-				rotation_track_y = animation->find_track(NodePath(vformat(".:bones/%d/bone_meta/mmd_rot:y", bone)), Animation::TYPE_BEZIER);
-				rotation_track_z = animation->find_track(NodePath(vformat(".:bones/%d/bone_meta/mmd_rot:z", bone)), Animation::TYPE_BEZIER);
-				rotation_track_w = animation->find_track(NodePath(vformat(".:bones/%d/bone_meta/mmd_rot:w", bone)), Animation::TYPE_BEZIER);
+				rotation_track_v = animation->find_track(NodePath(rot_path1), Animation::TYPE_VALUE);
+				rotation_track_b = animation->find_track(NodePath(rot_bezier_path), Animation::TYPE_BEZIER);
 				translation_track = animation->find_track(NodePath(".:" + bone_name), Animation::TYPE_POSITION_3D);
 			}
 
@@ -176,34 +173,14 @@ Node *EditorSceneImporterMMDVMD::import_mmd_vmd_scene(const String &p_path, Skel
 
 			Vector2 p_in_handle, p_out_handle;
 			double p_time = frame_time * motion->frame_number();
-			animation_cache.insert(AnimationKeyIdx{ p_time, rotation_track_x }, motion);
-			animation_cache.insert(AnimationKeyIdx{ p_time, rotation_track_y }, motion);
-			animation_cache.insert(AnimationKeyIdx{ p_time, rotation_track_z }, motion);
-			animation_cache.insert(AnimationKeyIdx{ p_time, rotation_track_w }, motion);
-			animation->bezier_track_insert_key(
-					rotation_track_x,
+			animation_cache.insert(AnimationKeyIdx{ p_time, rotation_track_b }, motion);
+
+			animation->bezier_track_insert_key(rotation_track_b, frame_time * motion->frame_number(), 0);
+			animation->track_insert_key(
+					rotation_track_v,
 					p_time,
-					quat.x,
-					p_in_handle,
-					p_out_handle);
-			animation->bezier_track_insert_key(
-					rotation_track_y,
-					p_time,
-					quat.y,
-					p_in_handle,
-					p_out_handle);
-			animation->bezier_track_insert_key(
-					rotation_track_z,
-					p_time,
-					quat.z,
-					p_in_handle,
-					p_out_handle);
-			animation->bezier_track_insert_key(
-					rotation_track_w,
-					p_time,
-					quat.w,
-					p_in_handle,
-					p_out_handle);
+					quat);
+
 			animation->position_track_insert_key(
 					translation_track,
 					p_time,
@@ -212,10 +189,34 @@ Node *EditorSceneImporterMMDVMD::import_mmd_vmd_scene(const String &p_path, Skel
 
 		for (int track_idx = 0; track_idx < animation->get_track_count(); ++track_idx) {
 			if (animation->track_get_type(track_idx) == Animation::TYPE_BEZIER) {
+				auto pathb = animation->track_get_path(track_idx);
+				print_line(pathb);
+				auto track_path =  pathb.get_concatenated_names() + StringName(":") + pathb.get_concatenated_subnames();
+				print_line(track_path);
+				auto tphase = animation->add_track(Animation::TYPE_VALUE);
+				auto trot2 = animation->add_track(Animation::TYPE_VALUE);
+				auto trot1 = animation->find_track(NodePath(track_path.replace("bezier", "1")), Animation::TYPE_VALUE);
+
+				auto path = track_path.replace("bezier", "phase");
+				auto path2 = track_path.replace("bezier", "2");
+
+				animation->track_set_path(tphase, path);
+				animation->track_set_path(trot2, path2);
+				animation->value_track_set_update_mode(tphase, Animation::UpdateMode::UPDATE_DISCRETE);
+				animation->value_track_set_update_mode(trot2, Animation::UpdateMode::UPDATE_DISCRETE);
+
 				for (int key_idx = 0; key_idx < animation->track_get_key_count(track_idx) - 1; ++key_idx) {
+					if (key_idx == 0) {
+						animation->bezier_track_set_key_value(track_idx, key_idx, 0);
+					}
+
 					auto t1 = animation->track_get_key_time(track_idx, key_idx);
 					auto t2 = animation->track_get_key_time(track_idx, key_idx + 1);
 					auto v1 = animation->bezier_track_get_key_value(track_idx, key_idx);
+					animation->bezier_track_set_key_value(track_idx, key_idx + 1, !v1);
+
+					animation->track_insert_key(trot2, t1, animation->track_get_key_value(trot1, key_idx + 1));
+					animation->track_insert_key(tphase, animation->track_get_key_time(track_idx, key_idx), v1);
 					auto v2 = animation->bezier_track_get_key_value(track_idx, key_idx + 1);
 					if (!animation_cache.has({ t1, track_idx }) || !animation_cache.has({ t2, track_idx })) {
 						continue;
