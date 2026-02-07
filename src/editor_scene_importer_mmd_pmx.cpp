@@ -1,6 +1,7 @@
 #include "editor_scene_importer_mmd_pmx.h"
-#include <godot_cpp/classes/project_settings.hpp>
 
+#include "godot_cpp/classes/copy_transform_modifier3d.hpp"
+#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/animation_player.hpp>
 #include <godot_cpp/classes/dir_access.hpp>
 #include <godot_cpp/classes/importer_mesh.hpp>
@@ -171,14 +172,38 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 	std::vector<std::unique_ptr<mmd_pmx_t::bone_t>> *bones = pmx.bones();
 
 	Skeleton3D *skeleton = memnew(Skeleton3D);
+	auto * copy_modifier = memnew(CopyTransformModifier3D);
+
 	uint32_t bone_count = pmx.bone_count();
 	for (uint32_t bone_i = 0; bone_i < bone_count; bone_i++) {
-		String japanese_name = convert_string(
-				bones->at(bone_i)->name()->value(), pmx.header()->encoding());
+		auto mmd_bone = bones->at(bone_i).get();
+		String bone_name = convert_string(
+				mmd_bone->name()->value(), pmx.header()->encoding());
 		int32_t bone = skeleton->get_bone_count();
-		skeleton->add_bone(japanese_name);
-		if (!bones->at(bone_i)->enabled()) {
+		skeleton->add_bone(bone_name);
+		if (!mmd_bone->enabled()) {
 			skeleton->set_bone_enabled(bone, false);
+		}
+	}
+
+	for (uint32_t bone_i = 0; bone_i < bone_count; bone_i++) {
+		auto mmd_bone = bones->at(bone_i).get();
+		if (mmd_bone->inherit_rotation() || mmd_bone->inherit_translation()) {
+			String bone_name = convert_string(
+				mmd_bone->name()->value(), pmx.header()->encoding());
+
+			auto parent_value = mmd_bone->grant()->parent_index()->value();
+			int32_t setting = copy_modifier->get_setting_count();
+			copy_modifier->set_setting_count(setting + 1);
+			String ref_name = convert_string(
+				pmx.bones()->at(parent_value)->name()->value(), pmx.header()->encoding());
+			copy_modifier->set_amount(setting, mmd_bone->grant()->ratio());
+			copy_modifier->set_reference_bone_name(setting, ref_name);
+			copy_modifier->set_apply_bone_name(setting, bone_name);
+			copy_modifier->set_relative(setting, true);
+			copy_modifier->set_copy_scale(setting, false);
+			copy_modifier->set_copy_rotation(setting, mmd_bone->inherit_rotation());
+			copy_modifier->set_copy_position(setting, mmd_bone->inherit_translation());
 		}
 	}
 
@@ -365,8 +390,10 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		mesh_3d->set_skeleton_path(mesh_3d->get_path_to(skeleton));
 		mesh_3d->set_name("Mesh");
 	}
-
-	std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t>> *rigid_bodies = pmx.rigid_bodies();
+	copy_modifier->set_name("mmd_bone_parents");
+	skeleton->add_child(copy_modifier, true);
+	copy_modifier->set_owner(root);
+	/*std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t>> *rigid_bodies = pmx.rigid_bodies();
 	for (uint32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
 		StaticBody3D *static_body_3d = memnew(StaticBody3D);
 		String rigid_name = convert_string(rigid_bodies->at(rigid_bodies_i)->name()->value(), pmx.header()->encoding());
@@ -385,7 +412,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		static_body_3d->set_name(rigid_name);
 		root->add_child(static_body_3d, true);
 		static_body_3d->set_owner(root);
-	}
+	}*/
 	return root;
 }
 
