@@ -1169,7 +1169,7 @@ mmd_pmx_t::len_string_t::len_string_t(kaitai::kstream* p__io, kaitai::kstruct* p
 
 void mmd_pmx_t::len_string_t::_read() {
     m_length = m__io->read_u4le();
-    m_value = kaitai::kstream::bytes_to_str(m__io->read_bytes(length()), std::string("UTF-16LE"));
+    m_value = kaitai::kstream::bytes_to_str(m__io->read_bytes(length()), ("UTF-16LE"));
 }
 
 mmd_pmx_t::len_string_t::~len_string_t() {

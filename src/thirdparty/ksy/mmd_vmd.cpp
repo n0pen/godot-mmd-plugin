@@ -130,7 +130,7 @@ mmd_vmd_t::motion_t::motion_t(kaitai::kstream* p__io, mmd_vmd_t* p__parent, mmd_
 }
 
 void mmd_vmd_t::motion_t::_read() {
-    m_bone_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(15), 0, false), std::string("Shift_JIS"));
+    m_bone_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(15), 0, false), ("Shift_JIS"));
     m_frame_number = m__io->read_u4le();
     m_position = std::unique_ptr<vec3_t>(new vec3_t(m__io, this, m__root));
     m_rotation = std::unique_ptr<vec4_t>(new vec4_t(m__io, this, m__root));
@@ -175,7 +175,7 @@ mmd_vmd_t::morph_t::morph_t(kaitai::kstream* p__io, mmd_vmd_t* p__parent, mmd_vm
 }
 
 void mmd_vmd_t::morph_t::_read() {
-    m_morph_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(15), 0, false), std::string("Shift_JIS"));
+    m_morph_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(15), 0, false), ("Shift_JIS"));
     m_frame_number = m__io->read_u4le();
     m_weight = m__io->read_f4le();
 }
@@ -216,7 +216,7 @@ void mmd_vmd_t::header_t::_read() {
     if (!(magic() == std::string("\x56\x6F\x63\x61\x6C\x6F\x69\x64\x20\x4D\x6F\x74\x69\x6F\x6E\x20\x44\x61\x74\x61\x20\x30\x30\x30\x32\x00\x00\x00\x00\x00", 30))) {
        return;
     }
-    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), std::string("Shift_JIS"));
+    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), ("Shift_JIS"));
 }
 
 mmd_vmd_t::header_t::~header_t() {

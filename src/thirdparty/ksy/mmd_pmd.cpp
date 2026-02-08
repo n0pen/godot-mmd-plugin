@@ -164,7 +164,7 @@ mmd_pmd_t::english_morph_name_t::english_morph_name_t(kaitai::kstream* p__io, mm
 }
 
 void mmd_pmd_t::english_morph_name_t::_read() {
-    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), std::string("Shift_JIS"));
+    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), ("Shift_JIS"));
 }
 
 mmd_pmd_t::english_morph_name_t::~english_morph_name_t() {
@@ -232,7 +232,7 @@ mmd_pmd_t::toon_texture_t::toon_texture_t(kaitai::kstream* p__io, mmd_pmd_t* p__
 }
 
 void mmd_pmd_t::toon_texture_t::_read() {
-    m_file_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(100), 0, false), std::string("Shift_JIS"));
+    m_file_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(100), 0, false), ("Shift_JIS"));
 }
 
 mmd_pmd_t::toon_texture_t::~toon_texture_t() {
@@ -249,7 +249,7 @@ mmd_pmd_t::english_bone_frame_name_t::english_bone_frame_name_t(kaitai::kstream*
 }
 
 void mmd_pmd_t::english_bone_frame_name_t::_read() {
-    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(50), 0, false), std::string("Shift_JIS"));
+    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(50), 0, false), ("Shift_JIS"));
 }
 
 mmd_pmd_t::english_bone_frame_name_t::~english_bone_frame_name_t() {
@@ -290,12 +290,12 @@ void mmd_pmd_t::english_header_t::_read() {
     n_model_name = true;
     if (compatibility() > 0) {
         n_model_name = false;
-        m_model_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), std::string("Shift_JIS"));
+        m_model_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), ("Shift_JIS"));
     }
     n_comment = true;
     if (compatibility() > 0) {
         n_comment = false;
-        m_comment = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(256), 0, false), std::string("Shift_JIS"));
+        m_comment = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(256), 0, false), ("Shift_JIS"));
     }
 }
 
@@ -335,7 +335,7 @@ mmd_pmd_t::bone_t::bone_t(kaitai::kstream* p__io, mmd_pmd_t* p__parent, mmd_pmd_
 }
 
 void mmd_pmd_t::bone_t::_read() {
-    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), std::string("Shift_JIS"));
+    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), ("Shift_JIS"));
     m_parent_index = m__io->read_u2le();
     m_tail_index = m__io->read_u2le();
     m_type = m__io->read_u1();
@@ -400,7 +400,7 @@ mmd_pmd_t::morph_t::morph_t(kaitai::kstream* p__io, mmd_pmd_t* p__parent, mmd_pm
 }
 
 void mmd_pmd_t::morph_t::_read() {
-    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), std::string("Shift_JIS"));
+    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), ("Shift_JIS"));
     m_element_count = m__io->read_u4le();
     m_type = m__io->read_u1();
     int l_elements = element_count();
@@ -485,8 +485,8 @@ void mmd_pmd_t::header_t::_read() {
         return;
     }
     m_version = m__io->read_u4le();
-    m_model_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), std::string("Shift_JIS"));
-    m_comment = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(256), 0, false), std::string("Shift_JIS"));
+    m_model_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), ("Shift_JIS"));
+    m_comment = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(256), 0, false), ("Shift_JIS"));
 }
 
 mmd_pmd_t::header_t::~header_t() {
@@ -512,7 +512,7 @@ mmd_pmd_t::constraint_t::constraint_t(kaitai::kstream* p__io, mmd_pmd_t* p__pare
 }
 
 void mmd_pmd_t::constraint_t::_read() {
-    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), std::string("Shift_JIS"));
+    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), ("Shift_JIS"));
     int l_rigid_body_indices = 2;
     m_rigid_body_indices = std::unique_ptr<std::vector<uint32_t>>(new std::vector<uint32_t>());
     m_rigid_body_indices->reserve(l_rigid_body_indices);
@@ -553,7 +553,7 @@ void mmd_pmd_t::material_t::_read() {
     m_toon_index = m__io->read_u1();
     m_edge_flag = m__io->read_u1();
     m_face_vertex_count = m__io->read_u4le();
-    m_file_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), std::string("Shift_JIS"));
+    m_file_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), ("Shift_JIS"));
 }
 
 mmd_pmd_t::material_t::~material_t() {
@@ -589,7 +589,7 @@ mmd_pmd_t::english_bone_name_t::english_bone_name_t(kaitai::kstream* p__io, mmd_
 }
 
 void mmd_pmd_t::english_bone_name_t::_read() {
-    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), std::string("Shift_JIS"));
+    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), ("Shift_JIS"));
 }
 
 mmd_pmd_t::english_bone_name_t::~english_bone_name_t() {
@@ -608,7 +608,7 @@ mmd_pmd_t::rigid_body_t::rigid_body_t(kaitai::kstream* p__io, mmd_pmd_t* p__pare
 }
 
 void mmd_pmd_t::rigid_body_t::_read() {
-    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), std::string("Shift_JIS"));
+    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(20), 0, false), ("Shift_JIS"));
     m_bone_index = m__io->read_u2le();
     m_group_index = m__io->read_u1();
     m_group_target = m__io->read_u2le();
@@ -640,7 +640,7 @@ mmd_pmd_t::bone_frame_name_t::bone_frame_name_t(kaitai::kstream* p__io, mmd_pmd_
 }
 
 void mmd_pmd_t::bone_frame_name_t::_read() {
-    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(50), 0, false), std::string("Shift_JIS"));
+    m_name = kaitai::kstream::bytes_to_str(kaitai::kstream::bytes_terminate(m__io->read_bytes(50), 0, false), ("Shift_JIS"));
 }
 
 mmd_pmd_t::bone_frame_name_t::~bone_frame_name_t() {
