@@ -1,12 +1,12 @@
 #include "editor_scene_importer_mmd_pmx.h"
 
-#include "mmd_helpers.h"
 #include "godot_cpp/classes/copy_transform_modifier3d.hpp"
-#include <godot_cpp/classes/project_settings.hpp>
+#include "mmd_helpers.h"
 #include <godot_cpp/classes/animation_player.hpp>
 #include <godot_cpp/classes/dir_access.hpp>
 #include <godot_cpp/classes/importer_mesh.hpp>
 #include <godot_cpp/classes/importer_mesh_instance3d.hpp>
+#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/skeleton3d.hpp>
 #include <godot_cpp/classes/skin.hpp>
@@ -156,7 +156,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 	std::vector<std::unique_ptr<mmd_pmx_t::bone_t>> *bones = pmx.bones();
 
 	Skeleton3D *skeleton = memnew(Skeleton3D);
-	auto * copy_modifier = memnew(CopyTransformModifier3D);
+	auto *copy_modifier = memnew(CopyTransformModifier3D);
 
 	uint32_t bone_count = pmx.bone_count();
 	for (uint32_t bone_i = 0; bone_i < bone_count; bone_i++) {
@@ -174,14 +174,21 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		auto mmd_bone = bones->at(bone_i).get();
 		if (mmd_bone->inherit_rotation() || mmd_bone->inherit_translation()) {
 			String bone_name = mmd_helpers::convert_string(
-				mmd_bone->name()->value(), pmx.header()->encoding());
+					mmd_bone->name()->value(), pmx.header()->encoding());
 
 			auto parent_value = mmd_bone->grant()->parent_index()->value();
 			int32_t setting = copy_modifier->get_setting_count();
 			copy_modifier->set_setting_count(setting + 1);
 			String ref_name = mmd_helpers::convert_string(
-				pmx.bones()->at(parent_value)->name()->value(), pmx.header()->encoding());
-			copy_modifier->set_amount(setting, mmd_bone->grant()->ratio());
+					pmx.bones()->at(parent_value)->name()->value(), pmx.header()->encoding());
+			float ratio = mmd_bone->grant()->ratio();
+			if (ratio < 0) {
+				copy_modifier->set_axis_x_inverted(setting, true);
+				copy_modifier->set_axis_y_inverted(setting, true);
+				copy_modifier->set_axis_z_inverted(setting, true);
+				ratio *= -1;
+			}
+			copy_modifier->set_amount(setting, ratio);
 			copy_modifier->set_reference_bone_name(setting, ref_name);
 			copy_modifier->set_apply_bone_name(setting, bone_name);
 			copy_modifier->set_relative(setting, true);
