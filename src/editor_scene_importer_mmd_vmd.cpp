@@ -31,6 +31,7 @@ Node *EditorSceneImporterMMDVMD::_import_scene(const String &p_path, uint32_t p_
 	Ref<VMDMMDState> state;
 	state.instantiate();
 	NodePath option = p_options["Skeleton"];
+	float translation_scale = p_options["TranslationScale"];
 	const auto *editor = EditorInterface::get_singleton();
 	const auto *edited_node = editor->get_edited_scene_root();
 	auto *node = edited_node->get_node<Skeleton3D>(option);
@@ -39,7 +40,7 @@ Node *EditorSceneImporterMMDVMD::_import_scene(const String &p_path, uint32_t p_
 		return nullptr;
 	}
 	print_line(node->get_path());
-	return import_mmd_vmd_scene(p_path, node, p_flags, state);
+	return import_mmd_vmd_scene(p_path, node, translation_scale, p_flags, state);
 }
 
 void EditorSceneImporterMMDVMD::_get_import_options(const String &p_path) {
@@ -51,6 +52,7 @@ void EditorSceneImporterMMDVMD::_get_import_options(const String &p_path) {
 			PROPERTY_USAGE_NODE_PATH_FROM_SCENE_ROOT | PROPERTY_USAGE_DEFAULT
 
 	);
+	add_import_option("TranslationScale", 1.0f);
 	EditorSceneFormatImporter::_get_import_options(p_path);
 }
 Quaternion EditorSceneImporterMMDVMD::mmd_vec4_to_quat(const mmd_vmd_t::vec4_t *p) {
@@ -89,7 +91,11 @@ Vector4 EditorSceneImporterMMDVMD::get_rotation_interpolation(std::vector<uint8_
 	}
 	return r_bezier;
 }
-Node *EditorSceneImporterMMDVMD::import_mmd_vmd_scene(const String &p_path, Skeleton3D *skeleton, uint32_t p_flags, Ref<VMDMMDState> r_state) {
+Node *EditorSceneImporterMMDVMD::import_mmd_vmd_scene(
+		const String &p_path, Skeleton3D *skeleton,
+		float p_translation_scale,
+		uint32_t p_flags,
+		Ref<VMDMMDState> r_state) {
 	if (r_state.is_null()) {
 		r_state.instantiate();
 	}
@@ -184,7 +190,7 @@ Node *EditorSceneImporterMMDVMD::import_mmd_vmd_scene(const String &p_path, Skel
 			animation->position_track_insert_key(
 					translation_track,
 					p_time,
-					bone_transform.origin + mmd_vec3_to_vector3d(motion->position()));
+					bone_transform.origin + mmd_vec3_to_vector3d(motion->position()) * p_translation_scale);
 		}
 
 		for (int track_idx = 0; track_idx < animation->get_track_count(); ++track_idx) {
