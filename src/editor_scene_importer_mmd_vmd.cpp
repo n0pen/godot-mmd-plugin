@@ -197,7 +197,7 @@ Node *EditorSceneImporterMMDVMD::import_mmd_vmd_scene(
 			if (animation->track_get_type(track_idx) == Animation::TYPE_BEZIER) {
 				auto pathb = animation->track_get_path(track_idx);
 				print_line(pathb);
-				auto track_path =  pathb.get_concatenated_names() + StringName(":") + pathb.get_concatenated_subnames();
+				auto track_path = pathb.get_concatenated_names() + StringName(":") + pathb.get_concatenated_subnames();
 				print_line(track_path);
 				auto tphase = animation->add_track(Animation::TYPE_VALUE);
 				auto trot2 = animation->add_track(Animation::TYPE_VALUE);

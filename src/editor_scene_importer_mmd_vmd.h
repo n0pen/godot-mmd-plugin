@@ -1,6 +1,6 @@
 #pragma once
 
-#include <godot_cpp//classes/editor_scene_format_importer.hpp>
+#include <godot_cpp/classes/editor_scene_format_importer.hpp>
 #include <godot_cpp/classes/skeleton3d.hpp>
 #include <godot_cpp/classes/resource.hpp>
 #include <godot_cpp/classes/node.hpp>
