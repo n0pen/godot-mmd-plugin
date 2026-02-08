@@ -95,7 +95,7 @@ Node *EditorSceneImporterMMDVMD::import_mmd_vmd_scene(const String &p_path, Skel
 	}
 	double frame_time = 1.0 / 30.0;
 	std::ifstream ifs(
-			ProjectSettings::get_singleton()->globalize_path(p_path).utf8().get_data(), std::ifstream::binary);
+	ProjectSettings::get_singleton()->globalize_path(p_path).wide_string(), std::ifstream::binary);
 	kaitai::kstream ks(&ifs);
 	mmd_vmd_t vmd = mmd_vmd_t(&ks);
 	AnimationPlayer *root = memnew(AnimationPlayer);
