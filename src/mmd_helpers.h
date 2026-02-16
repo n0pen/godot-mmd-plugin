@@ -4,6 +4,8 @@
 
 #include <string>
 
+#define mmd_unit_conversion 0.079f
+
 namespace godot {
 class mmd_helpers {
 public:

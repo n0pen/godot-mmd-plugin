@@ -14,7 +14,6 @@ class VMDMMDState;
 class EditorSceneImporterMMDVMD : public EditorSceneFormatImporter {
 	GDCLASS(EditorSceneImporterMMDVMD, EditorSceneFormatImporter)
 
-	const real_t mmd_unit_conversion = 0.079;
 	Vector3 mmd_vec3_to_vector3d(const mmd_vmd_t::vec3_t *vec3) const;
 	Vector4 get_rotation_interpolation(std::vector<uint8_t> *interpolation_data);
 	virtual Node *import_mmd_vmd_scene(const String &p_path, Skeleton3D *skeleton, float p_translation_scale, uint32_t p_flags, Ref<VMDMMDState> r_state);

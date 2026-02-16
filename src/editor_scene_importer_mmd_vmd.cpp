@@ -34,6 +34,9 @@ Node *EditorSceneImporterMMDVMD::_import_scene(const String &p_path, uint32_t p_
 	float translation_scale = p_options["TranslationScale"];
 	const auto *editor = EditorInterface::get_singleton();
 	const auto *edited_node = editor->get_edited_scene_root();
+	if (!edited_node) {
+		return nullptr;
+	}
 	auto *node = edited_node->get_node<Skeleton3D>(option);
 
 	if (!node) {
