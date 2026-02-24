@@ -5,13 +5,24 @@
 #include <godot_cpp/godot.hpp>
 
 #include "editor_scene_importer_mmd_pmx.h"
+#include "editor_scene_importer_mmd_vmd.h"
+#include "mmd_animator_modifier3d.h"
+#include "mmd_ik_modfier3d.h"
 
 using namespace godot;
 
 void initialize_mmd_plugin_module(ModuleInitializationLevel p_level) {
 	if (p_level == MODULE_INITIALIZATION_LEVEL_EDITOR) {
 		GDREGISTER_CLASS(EditorSceneImporterMMDPMX);
+		GDREGISTER_CLASS(EditorSceneImporterMMDVMD);
 		GDREGISTER_CLASS(PMXMMDState);
+		GDREGISTER_CLASS(VMDMMDState);
+	}
+	if (p_level == MODULE_INITIALIZATION_LEVEL_SCENE) {
+		GDREGISTER_CLASS(MMDAnimatorModifier3D);
+		GDREGISTER_CLASS(MMDIKChain);
+		GDREGISTER_CLASS(MMDIKModifierConfig);
+		GDREGISTER_CLASS(MMDIKModifier3D);
 	}
 }
 

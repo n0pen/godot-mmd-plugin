@@ -1,11 +1,15 @@
 #include "editor_scene_importer_mmd_pmx.h"
 
+#include "godot_cpp/classes/ccdik3d.hpp"
 #include "godot_cpp/classes/copy_transform_modifier3d.hpp"
-#include <godot_cpp/classes/project_settings.hpp>
+#include "godot_cpp/classes/joint_limitation_cone3d.hpp"
+#include "godot_cpp/classes/modifier_bone_target3d.hpp"
+#include "mmd_helpers.h"
 #include <godot_cpp/classes/animation_player.hpp>
 #include <godot_cpp/classes/dir_access.hpp>
 #include <godot_cpp/classes/importer_mesh.hpp>
 #include <godot_cpp/classes/importer_mesh_instance3d.hpp>
+#include <godot_cpp/classes/project_settings.hpp>
 #include <godot_cpp/classes/resource_loader.hpp>
 #include <godot_cpp/classes/skeleton3d.hpp>
 #include <godot_cpp/classes/skin.hpp>
@@ -45,12 +49,14 @@ bool EditorSceneImporterMMDPMX::is_valid_index(mmd_pmx_t::sized_index_t *p_index
 	}
 }
 
-Vector3 EditorSceneImporterMMDPMX::pmx_vec3_to_vector3d(const mmd_pmx_t::vec3_t *vector) const {
-	return {
-		vector->x() * mmd_unit_conversion,
-		vector->y() * mmd_unit_conversion,
-		vector->z() * mmd_unit_conversion * -1
-	};
+Vector3 EditorSceneImporterMMDPMX::pmx_vec3_to_vector3d(
+		const mmd_pmx_t::vec3_t *vector,
+		const Vector3 scale = { mmd_unit_conversion, mmd_unit_conversion, -mmd_unit_conversion }) {
+	return Vector3{
+		vector->x(),
+		vector->y(),
+		vector->z()
+	} * scale;
 }
 
 void EditorSceneImporterMMDPMX::add_vertex(
@@ -142,21 +148,33 @@ void EditorSceneImporterMMDPMX::add_vertex(
 	p_surface->add_vertex(point);
 }
 
-String EditorSceneImporterMMDPMX::convert_string(const std::string &p_string, uint8_t p_encoding) {
-	if (!p_string.empty()) {
-		auto d_string = PackedByteArray();
-		size_t str_len = p_string.size();
-		d_string.resize(str_len);
-		const char *str_data = p_string.c_str();
-		if (str_data != nullptr) {
-			memcpy(d_string.ptrw(), str_data, str_len / sizeof(char));
-		}
-		if (!p_encoding) {
-			return d_string.get_string_from_utf16();
-		}
-		return d_string.get_string_from_utf8();
+struct IKHashKey {
+	float max_angle;
+	uint32_t iteration;
+
+	bool operator==(const IKHashKey &other) const {
+		return Math::is_equal_approx(max_angle, other.max_angle) && iteration == other.iteration;
 	}
-	return "";
+};
+
+struct IKKeyHasher {
+	static uint32_t hash(const IKHashKey &p_key) {
+		uint32_t h = godot::hash_murmur3_one_float(p_key.max_angle);
+		return godot::hash_murmur3_one_32(p_key.iteration, h);
+	}
+};
+
+float fixPmxFloat(float wrongFloat) {
+	unsigned char bytes[4];
+	std::memcpy(bytes, &wrongFloat, 4);
+
+	// Manually reverse the 4 bytes
+	std::swap(bytes[0], bytes[3]);
+	std::swap(bytes[1], bytes[2]);
+
+	float result;
+	std::memcpy(&result, bytes, 4);
+	return result;
 }
 
 Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint32_t p_flags, float p_bake_fps,
@@ -165,19 +183,19 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		r_state.instantiate();
 	}
 	std::ifstream ifs(
-			ProjectSettings::get_singleton()->globalize_path(p_path).utf8().get_data(), std::ifstream::binary);
+			ProjectSettings::get_singleton()->globalize_path(p_path).wide_string(), std::ifstream::binary);
 	kaitai::kstream ks(&ifs);
 	mmd_pmx_t pmx = mmd_pmx_t(&ks);
 	Node3D *root = memnew(Node3D);
 	std::vector<std::unique_ptr<mmd_pmx_t::bone_t>> *bones = pmx.bones();
 
 	Skeleton3D *skeleton = memnew(Skeleton3D);
-	auto * copy_modifier = memnew(CopyTransformModifier3D);
+	auto *copy_modifier = memnew(CopyTransformModifier3D);
 
 	uint32_t bone_count = pmx.bone_count();
 	for (uint32_t bone_i = 0; bone_i < bone_count; bone_i++) {
 		auto mmd_bone = bones->at(bone_i).get();
-		String bone_name = convert_string(
+		String bone_name = mmd_helpers::convert_string(
 				mmd_bone->name()->value(), pmx.header()->encoding());
 		int32_t bone = skeleton->get_bone_count();
 		skeleton->add_bone(bone_name);
@@ -189,15 +207,22 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 	for (uint32_t bone_i = 0; bone_i < bone_count; bone_i++) {
 		auto mmd_bone = bones->at(bone_i).get();
 		if (mmd_bone->inherit_rotation() || mmd_bone->inherit_translation()) {
-			String bone_name = convert_string(
-				mmd_bone->name()->value(), pmx.header()->encoding());
+			String bone_name = mmd_helpers::convert_string(
+					mmd_bone->name()->value(), pmx.header()->encoding());
 
 			auto parent_value = mmd_bone->grant()->parent_index()->value();
 			int32_t setting = copy_modifier->get_setting_count();
 			copy_modifier->set_setting_count(setting + 1);
-			String ref_name = convert_string(
-				pmx.bones()->at(parent_value)->name()->value(), pmx.header()->encoding());
-			copy_modifier->set_amount(setting, mmd_bone->grant()->ratio());
+			String ref_name = mmd_helpers::convert_string(
+					pmx.bones()->at(parent_value)->name()->value(), pmx.header()->encoding());
+			float ratio = mmd_bone->grant()->ratio();
+			if (ratio < 0) {
+				copy_modifier->set_axis_x_inverted(setting, true);
+				copy_modifier->set_axis_y_inverted(setting, true);
+				copy_modifier->set_axis_z_inverted(setting, true);
+				ratio *= -1;
+			}
+			copy_modifier->set_amount(setting, ratio);
 			copy_modifier->set_reference_bone_name(setting, ref_name);
 			copy_modifier->set_apply_bone_name(setting, bone_name);
 			copy_modifier->set_relative(setting, true);
@@ -252,7 +277,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		if (raw_texture_path.empty()) {
 			continue;
 		}
-		String texture_path = convert_string(raw_texture_path, pmx.header()->encoding()).simplify_path();
+		String texture_path = mmd_helpers::convert_string(raw_texture_path, pmx.header()->encoding()).simplify_path();
 		texture_path = p_path.get_base_dir() + "/" + texture_path;
 		print_verbose(vformat("Found texture %s", texture_path));
 
@@ -279,7 +304,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		}
 		mmd_pmx_t::color4_t *diffuse = materials->at(material_cache_i)->diffuse();
 		material->set_albedo(Color(diffuse->r(), diffuse->g(), diffuse->b(), diffuse->a()));
-		String material_name = convert_string(materials->at(material_cache_i)->name()->value(),
+		String material_name = mmd_helpers::convert_string(materials->at(material_cache_i)->name()->value(),
 				pmx.header()->encoding());
 		material->set_name(material_name);
 		material_cache.write[material_cache_i] = material;
@@ -294,7 +319,7 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 
 		LocalVector<String> blend_shapes;
 		for (uint32_t morph_i = 0; morph_i < pmx.morph_count(); ++morph_i) {
-			String name = convert_string(pmx.morphs()->at(morph_i)->name()->value(),
+			String name = mmd_helpers::convert_string(pmx.morphs()->at(morph_i)->name()->value(),
 					pmx.header()->encoding());
 			blend_shapes.push_back(name);
 			if (pmx.morphs()->at(morph_i)->type() == mmd_pmx_t::MORPH_TYPE_VERTEX) {
@@ -390,13 +415,14 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		mesh_3d->set_skeleton_path(mesh_3d->get_path_to(skeleton));
 		mesh_3d->set_name("Mesh");
 	}
+
 	copy_modifier->set_name("mmd_bone_parents");
 	skeleton->add_child(copy_modifier, true);
 	copy_modifier->set_owner(root);
 	/*std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t>> *rigid_bodies = pmx.rigid_bodies();
 	for (uint32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
 		StaticBody3D *static_body_3d = memnew(StaticBody3D);
-		String rigid_name = convert_string(rigid_bodies->at(rigid_bodies_i)->name()->value(), pmx.header()->encoding());
+		String rigid_name = mmd_helpers::convert_string(rigid_bodies->at(rigid_bodies_i)->name()->value(), pmx.header()->encoding());
 		Transform3D xform;
 		Basis basis;
 		basis.set_euler(Vector3(
@@ -413,6 +439,64 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 		root->add_child(static_body_3d, true);
 		static_body_3d->set_owner(root);
 	}*/
+	AHashMap<IKHashKey, CCDIK3D *, IKKeyHasher> ccd_hash_map;
+	for (int mmd_bone_idx = 0; mmd_bone_idx < pmx.bone_count(); ++mmd_bone_idx) {
+		if (pmx.bones()->at(mmd_bone_idx)->has_ik()) {
+			auto *mmd_bone = pmx.bones()->at(mmd_bone_idx).get();
+			IKHashKey p_key = { mmd_bone->ik()->max_angle(), mmd_bone->ik()->iteration() };
+			CCDIK3D *ccdik;
+			if (!ccd_hash_map.has(p_key)) {
+				ccdik = memnew(CCDIK3D);
+				ccd_hash_map.insert(p_key, ccdik);
+				ccdik->set_angular_delta_limit(p_key.max_angle);
+				ccdik->set_max_iterations(p_key.iteration);
+				skeleton->add_child(ccdik, true);
+				ccdik->set_owner(root);
+
+			} else {
+				ccdik = ccd_hash_map[p_key];
+			}
+
+			auto target_node = memnew(ModifierBoneTarget3D);
+			auto target_name = mmd_helpers::convert_string(mmd_bone->name()->value(), pmx.header()->encoding());
+			target_node->set_name(target_name);
+			target_node->set_bone_name(target_name);
+			skeleton->add_child(target_node, true);
+			target_node->set_owner(root);
+			if (mmd_bone->ik()->link_count()) {
+				auto links = mmd_bone->ik()->links();
+				int32_t setting = ccdik->get_setting_count();
+				ccdik->set_setting_count(setting + 1);
+				ccdik->set_root_bone_name(setting, mmd_helpers::convert_string(pmx.bones()->at(links->at(mmd_bone->ik()->link_count() - 1)->index()->value())->name()->value(), pmx.header()->encoding()));
+				ccdik->set_end_bone_name(setting, mmd_helpers::convert_string(pmx.bones()->at(mmd_bone->ik()->effector()->value())->name()->value(), pmx.header()->encoding()));
+				ccdik->set_target_node(setting, ccdik->get_path_to(target_node));
+				ccdik->set(vformat("settings/%d/joint_count", setting), links->size());
+				for (int joint_idx = 0; joint_idx < links->size(); ++joint_idx) {
+					if (links->at(joint_idx)->angle_limitation() == 1) {
+						Vector3 min = pmx_vec3_to_vector3d(links->at(joint_idx)->upper_limitation_angle(), { -1, -1, 1 });
+						Vector3 max = pmx_vec3_to_vector3d(links->at(joint_idx)->lower_limitation_angle(), { -1, -1, 1 });
+
+						print_line(min);
+						print_line(max);
+						float max_angle = 0.0;
+						for (int axis_i = 0; axis_i < 3; ++axis_i) {
+							max_angle = MAX(max_angle, max[axis_i] - min[axis_i]);
+						}
+
+						Ref<JointLimitationCone3D> limitation_3d;
+						limitation_3d.instantiate();
+						limitation_3d->set_angle(max_angle);
+						limitation_3d->set_name("MMDJointLimitation");
+
+						ccdik->set_joint_limitation_rotation_offset(setting, links->size() - joint_idx - 1, Quaternion::from_euler({ Math_PI / 2, 0, 0 }));
+
+						ccdik->set_joint_limitation(setting, links->size() - joint_idx - 1, limitation_3d);
+					}
+				}
+			}
+		}
+	}
+
 	return root;
 }
 

@@ -1,9 +1,13 @@
 @tool
 extends EditorPlugin
-var plug: EditorSceneImporterMMDPMX
+var pmx: EditorSceneImporterMMDPMX
+var vmd: EditorSceneImporterMMDVMD
 func _enter_tree() -> void:
-	plug = EditorSceneImporterMMDPMX.new()
-	add_scene_format_importer_plugin(plug)
+	pmx = EditorSceneImporterMMDPMX.new()
+	add_scene_format_importer_plugin(pmx)
+	vmd = EditorSceneImporterMMDVMD.new()
+	add_scene_format_importer_plugin(vmd)
 
 func _exit_tree() -> void:
-	remove_scene_format_importer_plugin(plug)
+	remove_scene_format_importer_plugin(pmx)
+	remove_scene_format_importer_plugin(vmd)

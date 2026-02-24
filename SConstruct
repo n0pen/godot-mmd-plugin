@@ -18,7 +18,7 @@ env.Append(CPPPATH=["src/thirdparty"])
 env.Append(CPPPATH=["src/thirdparty/ksy"])
 env.Append(CPPPATH=["src/thirdparty/ksy/kaitai"])
 sources = Glob("src/*.cpp")+Glob("src/thirdparty/*.cpp")+Glob("src/thirdparty/ksy/*.cpp")+Glob("src/thirdparty/ksy/kaitai/*.cpp")
-env.Append(CPPDEFINES=["KS_STR_ENCODING_SHIFT_JIS"])
+env.Append(CPPDEFINES=["KS_STR_ENCODING_NONE"])
 
 if env["platform"] == "macos":
     library = env.SharedLibrary(
