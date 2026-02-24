@@ -9,20 +9,22 @@ The objective is to import MMD files to be able to render and work with MMD asse
 ### PMX:
 - [x] Skeleton
 - [x] Mesh
-- [ ] Morphs
+- [x] Morphs
   - Only vertex morphs are imported
 - [x] Materials
   - Only basic textured materials are created
+  - This will be improved in the future
 - [ ] IK
-  - This is under development.
-- [ ] Bone Parent
-  - This is under development.
+  - Currently, IK is imported using Godot's CCDIK
+  - A custom IK system is under development to better match MMD IK results
+- [x] Bone Parent
+  - Implemented using bone modifiers.
 - [ ] Physics
   - For now, use bone modifiers. See below
 
 ### VMD (under development):
 - Morphs and Motion data has been imported
-  - Interpolation is under development
+- Interpolation has been implemented using a custom skeleton modifier
 
 ## How do I use it?
 
@@ -42,6 +44,6 @@ Eventually, a custom bone modifier system could be added to replicate MMD Rigid 
 - Sean Lynch and iFire
 For working in the original PMX importer module
 
-- Lyuma, Tokage and IFire from the V-Sekai discord for their help
+- Lyuma, Tokage and IFire from V-Sekai for their help
 
 
