@@ -4,7 +4,10 @@
 #include "godot_cpp/classes/copy_transform_modifier3d.hpp"
 #include "godot_cpp/classes/joint_limitation_cone3d.hpp"
 #include "godot_cpp/classes/modifier_bone_target3d.hpp"
+#include "mmd_animator_modifier3d.h"
 #include "mmd_helpers.h"
+#include "mmd_ik_modfier3d.h"
+
 #include <godot_cpp/classes/animation_player.hpp>
 #include <godot_cpp/classes/dir_access.hpp>
 #include <godot_cpp/classes/importer_mesh.hpp>
@@ -419,83 +422,50 @@ Node *EditorSceneImporterMMDPMX::import_mmd_pmx_scene(const String &p_path, uint
 	copy_modifier->set_name("mmd_bone_parents");
 	skeleton->add_child(copy_modifier, true);
 	copy_modifier->set_owner(root);
-	/*std::vector<std::unique_ptr<mmd_pmx_t::rigid_body_t>> *rigid_bodies = pmx.rigid_bodies();
-	for (uint32_t rigid_bodies_i = 0; rigid_bodies_i < pmx.rigid_body_count(); rigid_bodies_i++) {
-		StaticBody3D *static_body_3d = memnew(StaticBody3D);
-		String rigid_name = mmd_helpers::convert_string(rigid_bodies->at(rigid_bodies_i)->name()->value(), pmx.header()->encoding());
-		Transform3D xform;
-		Basis basis;
-		basis.set_euler(Vector3(
-				rigid_bodies->at(rigid_bodies_i)->rotation()->x(),
-				rigid_bodies->at(rigid_bodies_i)->rotation()->y(),
-				-rigid_bodies->at(rigid_bodies_i)->rotation()->z()));
-		xform.basis = basis;
-		Vector3 point = Vector3(rigid_bodies->at(rigid_bodies_i)->position()->x() * mmd_unit_conversion,
-				rigid_bodies->at(rigid_bodies_i)->position()->y() * mmd_unit_conversion,
-				-rigid_bodies->at(rigid_bodies_i)->position()->z() * mmd_unit_conversion);
-		xform.origin = point;
-		static_body_3d->set_transform(xform);
-		static_body_3d->set_name(rigid_name);
-		root->add_child(static_body_3d, true);
-		static_body_3d->set_owner(root);
-	}*/
-	AHashMap<IKHashKey, CCDIK3D *, IKKeyHasher> ccd_hash_map;
+	auto mmd_animator = memnew(MMDAnimatorModifier3D);
+	skeleton->add_child(mmd_animator, true);
+	mmd_animator->set_owner(root);
+
+	auto mmdik = memnew(MMDIKModifier3D);
+	skeleton->add_child(mmdik, true);
+	mmdik->set_owner(root);
+	TypedArray<MMDIKModifierConfig> configs;
 	for (int mmd_bone_idx = 0; mmd_bone_idx < pmx.bone_count(); ++mmd_bone_idx) {
 		if (pmx.bones()->at(mmd_bone_idx)->has_ik()) {
+			configs.resize(configs.size() + 1);
 			auto *mmd_bone = pmx.bones()->at(mmd_bone_idx).get();
-			IKHashKey p_key = { mmd_bone->ik()->max_angle(), mmd_bone->ik()->iteration() };
-			CCDIK3D *ccdik;
-			if (!ccd_hash_map.has(p_key)) {
-				ccdik = memnew(CCDIK3D);
-				ccd_hash_map.insert(p_key, ccdik);
-				ccdik->set_angular_delta_limit(p_key.max_angle);
-				ccdik->set_max_iterations(p_key.iteration);
-				skeleton->add_child(ccdik, true);
-				ccdik->set_owner(root);
-
-			} else {
-				ccdik = ccd_hash_map[p_key];
-			}
-
-			auto target_node = memnew(ModifierBoneTarget3D);
 			auto target_name = mmd_helpers::convert_string(mmd_bone->name()->value(), pmx.header()->encoding());
-			target_node->set_name(target_name);
-			target_node->set_bone_name(target_name);
-			skeleton->add_child(target_node, true);
-			target_node->set_owner(root);
-			if (mmd_bone->ik()->link_count()) {
-				auto links = mmd_bone->ik()->links();
-				int32_t setting = ccdik->get_setting_count();
-				ccdik->set_setting_count(setting + 1);
-				ccdik->set_root_bone_name(setting, mmd_helpers::convert_string(pmx.bones()->at(links->at(mmd_bone->ik()->link_count() - 1)->index()->value())->name()->value(), pmx.header()->encoding()));
-				ccdik->set_end_bone_name(setting, mmd_helpers::convert_string(pmx.bones()->at(mmd_bone->ik()->effector()->value())->name()->value(), pmx.header()->encoding()));
-				ccdik->set_target_node(setting, ccdik->get_path_to(target_node));
-				ccdik->set(vformat("settings/%d/joint_count", setting), links->size());
-				for (int joint_idx = 0; joint_idx < links->size(); ++joint_idx) {
-					if (links->at(joint_idx)->angle_limitation() == 1) {
-						Vector3 min = pmx_vec3_to_vector3d(links->at(joint_idx)->upper_limitation_angle(), { -1, -1, 1 });
-						Vector3 max = pmx_vec3_to_vector3d(links->at(joint_idx)->lower_limitation_angle(), { -1, -1, 1 });
+			auto effector_name = mmd_helpers::convert_string(pmx.bones()->at(mmd_bone->ik()->effector()->value())->name()->value(), pmx.header()->encoding());
+			auto config = memnew(MMDIKModifierConfig);
+			config->effector_bone = skeleton->find_bone(effector_name);
+			config->target_bone = skeleton->find_bone(target_name);
+			auto chain = TypedArray<MMDIKChain>();
+			chain.resize(mmd_bone->ik()->link_count());
+			for (int link_idx = 0; link_idx < mmd_bone->ik()->link_count(); ++link_idx) {
+				auto link = memnew(MMDIKChain);
 
-						print_line(min);
-						print_line(max);
-						float max_angle = 0.0;
-						for (int axis_i = 0; axis_i < 3; ++axis_i) {
-							max_angle = MAX(max_angle, max[axis_i] - min[axis_i]);
-						}
+				auto *mmd_link = mmd_bone->ik()->links()->at(link_idx).get();
+				auto link_name = mmd_helpers::convert_string(pmx.bones()->at(mmd_link->index()->value())->name()->value(), pmx.header()->encoding());
 
-						Ref<JointLimitationCone3D> limitation_3d;
-						limitation_3d.instantiate();
-						limitation_3d->set_angle(max_angle);
-						limitation_3d->set_name("MMDJointLimitation");
+				link->bone_index = skeleton->find_bone(link_name);
 
-						ccdik->set_joint_limitation_rotation_offset(setting, links->size() - joint_idx - 1, Quaternion::from_euler({ Math_PI / 2, 0, 0 }));
-
-						ccdik->set_joint_limitation(setting, links->size() - joint_idx - 1, limitation_3d);
-					}
+				link->is_limited = mmd_link->angle_limitation() > 0;
+				if (link->is_limited) {
+					link->limits = AABB(
+							pmx_vec3_to_vector3d(mmd_link->upper_limitation_angle(), Vector3(-1, -1, 1)),
+							pmx_vec3_to_vector3d(mmd_link->lower_limitation_angle(), Vector3(-1, -1, 1)));
 				}
+				chain[link_idx] = link;
 			}
+			config->chain = chain;
+			configs[configs.size() - 1] = config;
 		}
 	}
+	mmdik->set_config(configs);
+
+	auto mmd_animator2 = memnew(MMDAnimatorModifier3D);
+	skeleton->add_child(mmd_animator2, true);
+	mmd_animator2->set_owner(root);
 
 	return root;
 }

@@ -12,7 +12,7 @@ void MMDIKModifier3D::set_config(const TypedArray<MMDIKModifierConfig> &p_config
 	if (config == p_config) {
 		return;
 	}
-	config = p_config;
+	config = p_config.duplicate(true);
 	notify_property_list_changed();
 }
 
@@ -324,12 +324,14 @@ void MMDIKModifier3D::_process_modification_with_delta(double p_delta) {
 		}
 	}
 }
-
 void MMDIKModifier3D::_bind_methods() {
 	ClassDB::bind_method(D_METHOD("get_config"), &MMDIKModifier3D::get_config);
 	ClassDB::bind_method(D_METHOD("set_config", "p_config"), &MMDIKModifier3D::set_config);
 
-	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "config", PROPERTY_HINT_ARRAY_TYPE, "MMDIKModifierConfig"), "set_config", "get_config");
+	String hint_string = vformat("%d/%d:MMDIKModifierConfig", Variant::OBJECT, PROPERTY_HINT_RESOURCE_TYPE);
+
+	ADD_PROPERTY(PropertyInfo(Variant::ARRAY, "config", PROPERTY_HINT_TYPE_STRING, hint_string), "set_config", "get_config");
 }
+
 
 } //namespace godot
